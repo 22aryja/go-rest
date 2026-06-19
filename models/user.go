@@ -1,0 +1,56 @@
+package models
+
+import (
+	"example.com/rest-api/db"
+	"example.com/rest-api/utils"
+)
+
+type User struct {
+	ID       int64
+	Email    string `binding:"required"`
+	Password string `binding:"required"`
+}
+
+func (user *User) Save() error {
+	var query string = `
+		INSERT INTO users(email, password) VALUES (?, ?)
+	`
+
+	stmt, err := db.DB.Prepare(query)
+
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	hasedPassword, err := utils.HashPassword(user.Password)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(user.Email, hasedPassword)
+	if err != nil {
+		return err
+	}
+
+	userId, err := result.LastInsertId()
+	user.ID = userId
+	return err
+}
+
+func (user *User) ValidateCredentials() error {
+	var query string = `
+		SELECT email, password FROM users WHERE email = ?
+	`
+	row := db.DB.QueryRow(query, user.Email)
+	
+	var retrievedPassword string
+	err := row.Scan(&retrievedPassword)
+
+	if err != nil {
+		return err
+	}
+
+
+}
